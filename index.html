@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>KingdomShift.Live</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  body{margin:0;font-family:Arial,sans-serif;background:#070707;color:#fff}
+  .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .card{max-width:430px;width:100%;background:#111;border:1px solid #00c9c850;border-radius:22px;padding:28px;box-shadow:0 0 40px #00c9c820}
+  h1{color:#c9a227;margin:0 0 8px}
+  p{color:#bbb;line-height:1.5}
+  input,button{width:100%;padding:13px;margin:8px 0;border-radius:12px;font-size:16px}
+  input{background:#050505;color:white;border:1px solid #333}
+  button{background:linear-gradient(90deg,#00c9c8,#c9a227);border:none;font-weight:bold;cursor:pointer}
+  a{color:#00c9c8;cursor:pointer}
+  .nav{display:flex;gap:10px;flex-wrap:wrap;margin:20px 0}
+  .nav button{width:auto;padding:10px 14px}
+  .page{display:none;padding:24px}
+  .active{display:block}
+  .top{display:flex;justify-content:space-between;align-items:center;background:#0b0b0b;border-bottom:1px solid #222;padding:14px 20px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
+  .box{background:#111;border:1px solid #222;border-radius:16px;padding:18px}
+  .gold{color:#c9a227}.teal{color:#00c9c8}.err{color:#ff6b6b}.ok{color:#4ade80}
+</style>
+</head>
+<body>
+
+<div id="loading" class="wrap"><div class="card"><h1>KingdomShift.Live</h1><p>Loading platform...</p></div></div>
+
+<div id="auth" class="wrap" style="display:none">
+  <div class="card">
+    <h1>KingdomShift.Live</h1>
+    <p>Equip • Empower • Expand the Kingdom</p>
+    <div id="authMsg"></div>
+
+    <div id="loginBox">
+      <h2>Login</h2>
+      <input id="loginEmail" type="email" placeholder="Email">
+      <input id="loginPass" type="password" placeholder="Password">
+      <button onclick="login()">Login</button>
+      <p>No account? <a onclick="showRegister()">Create one</a></p>
+    </div>
+
+    <div id="registerBox" style="display:none">
+      <h2>Create Account</h2>
+      <input id="regName" placeholder="Display name">
+      <input id="regEmail" type="email" placeholder="Email">
+      <input id="regPass" type="password" placeholder="Password">
+      <button onclick="register()">Register</button>
+      <p>Already have account? <a onclick="showLogin()">Login</a></p>
+    </div>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+  <div class="top">
+    <strong class="gold">KingdomShift.Live</strong>
+    <button style="width:auto" onclick="logout()">Logout</button>
+  </div>
+
+  <div class="page active" id="dashboard">
+    <h1>Dashboard</h1>
+    <p class="teal">Welcome, <span id="userName">Creator</span></p>
+    <div class="nav">
+      <button onclick="showPage('dashboard')">Home</button>
+      <button onclick="showPage('live')">Live</button>
+      <button onclick="showPage('brain')">Brain Battle</button>
+      <button onclick="showPage('shop')">AuthorityShop</button>
+      <button onclick="showPage('profile')">Profile</button>
+      <button onclick="showPage('admin')">Admin</button>
+    </div>
+    <div class="grid">
+      <div class="box"><h3>🔴 Live</h3><p>ZEGOCloud livestreaming ready.</p></div>
+      <div class="box"><h3>🧠 Brain Battle</h3><p>Creator vs creator battle system.</p></div>
+      <div class="box"><h3>🛍️ AuthorityShop</h3><p>Creator marketplace foundation.</p></div>
+      <div class="box"><h3>👑 Admin</h3><p>Platform control center.</p></div>
+    </div>
+  </div>
+
+  <div class="page" id="live">
+    <h1>Live</h1>
+    <div class="box">
+      <h2>Go Live</h2>
+      <p>ZEGOCloud will connect here for real livestreaming.</p>
+      <button onclick="alert('ZEGOCloud connection comes next')">Go Live Now</button>
+    </div>
+  </div>
+
+  <div class="page" id="brain">
+    <h1>Brain Battle</h1>
+    <div class="box">
+      <h2>Host A vs Host B</h2>
+      <p>TikTok-style battle, branded as Brain Battle.</p>
+      <button>Invite to Brain Battle</button>
+    </div>
+  </div>
+
+  <div class="page" id="shop">
+    <h1>AuthorityShop</h1>
+    <div class="grid">
+      <div class="box"><h3>Digital Product</h3><p>$27</p><button>Add to Cart</button></div>
+      <div class="box"><h3>Course</h3><p>$97</p><button>Add to Cart</button></div>
+    </div>
+  </div>
+
+  <div class="page" id="profile">
+    <h1>Profile</h1>
+    <div class="box">
+      <p><strong>Email:</strong> <span id="userEmail"></span></p>
+      <p><strong>Role:</strong> <span id="userRole">user</span></p>
+    </div>
+  </div>
+
+  <div class="page" id="admin">
+    <h1>Admin Panel</h1>
+    <div class="box">
+      <p>Super Admin controls will connect to Supabase roles next.</p>
+      <button>Manage Users</button>
+      <button>Feature Toggles</button>
+      <button>Reports</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://ecmqjwjnelbojwryscxr.supabase.co";
+const SUPABASE_KEY = "sb_publishable_SQiohFHG2h8ofPzzlmPqTA_pa3AQTxb";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+let currentProfile = null;
+
+function msg(text, type="err"){
+  document.getElementById("authMsg").innerHTML = `<p class="${type}">${text}</p>`;
+}
+
+function showLogin(){
+  document.getElementById("loginBox").style.display="block";
+  document.getElementById("registerBox").style.display="none";
+  msg("");
+}
+
+function showRegister(){
+  document.getElementById("loginBox").style.display="none";
+  document.getElementById("registerBox").style.display="block";
+  msg("");
+}
+
+async function register(){
+  const displayName = document.getElementById("regName").value.trim();
+  const email = document.getElementById("regEmail").value.trim();
+  const password = document.getElementById("regPass").value;
+
+  if(!displayName || !email || !password) return msg("Fill in all fields.");
+  if(password.length < 6) return msg("Password must be at least 6 characters.");
+
+  const { data, error } = await sb.auth.signUp({
+    email,
+    password,
+    options:{ data:{ display_name: displayName } }
+  });
+
+  if(error) return msg(error.message);
+
+  msg("Account created. Check email if confirmation is required, then login.", "ok");
+  showLogin();
+}
+
+async function login(){
+  const email = document.getElementById("loginEmail").value.trim();
+  const password = document.getElementById("loginPass").value;
+
+  if(!email || !password) return msg("Enter email and password.");
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+  if(error) return msg(error.message);
+
+  currentUser = data.user;
+  await ensureProfile();
+  showApp();
+}
+
+async function ensureProfile(){
+  if(!currentUser) return;
+
+  const { data } = await sb
+    .from("profiles")
+    .select("*")
+    .eq("id", currentUser.id)
+    .maybeSingle();
+
+  if(data){
+    currentProfile = data;
+    return;
+  }
+
+  const username = currentUser.email.split("@")[0].replace(/[^a-z0-9_]/gi,"").toLowerCase();
+  const displayName = currentUser.user_metadata?.display_name || username;
+
+  const { data:newProfile, error } = await sb
+    .from("profiles")
+    .insert({
+      id: currentUser.id,
+      email: currentUser.email,
+      username,
+      display_name: displayName,
+      role: "user"
+    })
+    .select()
+    .single();
+
+  if(error){
+    console.error(error);
+    alert("Profile creation failed. Check Supabase table policies.");
+    return;
+  }
+
+  currentProfile = newProfile;
+}
+
+function showApp(){
+  document.getElementById("loading").style.display="none";
+  document.getElementById("auth").style.display="none";
+  document.getElementById("app").style.display="block";
+
+  document.getElementById("userEmail").textContent = currentUser.email;
+  document.getElementById("userName").textContent = currentProfile?.display_name || currentUser.email;
+  document.getElementById("userRole").textContent = currentProfile?.role || "user";
+}
+
+function showAuth(){
+  document.getElementById("loading").style.display="none";
+  document.getElementById("auth").style.display="flex";
+  document.getElementById("app").style.display="none";
+}
+
+async function logout(){
+  await sb.auth.signOut();
+  currentUser = null;
+  currentProfile = null;
+  showAuth();
+}
+
+function showPage(id){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+async function init(){
+  try{
+    const timeout = new Promise((_, reject)=>setTimeout(()=>reject(new Error("Auth timeout")),5000));
+    const sessionPromise = sb.auth.getSession();
+    const { data } = await Promise.race([sessionPromise, timeout]);
+
+    if(data?.session?.user){
+      currentUser = data.session.user;
+      await ensureProfile();
+      showApp();
+    } else {
+      showAuth();
+    }
+  } catch(e){
+    console.error(e);
+    showAuth();
+  }
+}
+
+init();
+</script>
+
+</body>
+</html>
